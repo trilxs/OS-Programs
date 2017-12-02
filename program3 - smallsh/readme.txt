@@ -1,0 +1,1 @@
+gcc smallsh.c

@@ -1,0 +1,149 @@
+#!/bin/bash
+# Tam Lu
+# HW1: stats file
+
+# Defining variables
+temp=$(mktemp)
+average=0
+median=0
+inputFile=${args[1]}
+
+
+# Check invalid arguments
+err() {
+	if [ $1 == 0 ]; then
+	printf "Invalid arguments.\nExample: stats { -row | -col } 'filename'\n"
+	exit 1
+	else 
+	printf "Cannot read file.\n"
+	exit 1
+	fi
+}
+
+# Check if amount of arguments is invalid
+if [[ "$#" -lt 1 || "$#" -gt 2 ]];
+then
+	err 0
+# Check if argument values are invalid
+elif [[ $1 != -c* && $1 != -r* ]];
+then
+	err 0
+# Check if file is readable
+elif [ ! -f $inputFile ]; then
+    err 1
+fi
+
+# If arguments are valid, read the file
+while read line 
+do 
+	echo "$line" >> $temp
+done < "${2:-/dev/stdin}"
+
+inputFile=$temp
+
+# Rows function to print the average and median of the rows in the text file
+rows() {
+# Set row number and column number to 0 (empty) before setting them
+rowNum=0;
+colNum=0;
+
+# Print "Average: "
+echo "Average: "
+while read line
+do
+	# Store # of rows 
+	rowNum=$(echo $line | tr "\t" "\n")
+	# Store # of columns - wc counts the # of words (-w) in each row 
+	colNum=$(echo $line | wc -w)
+	# Reset sum
+	sumNum=0
+		for i in $rowNum
+		do
+		# Add to sum variable
+		sumNum=$(expr $i + $sumNum)
+		done
+		# Rounds to the nearest whole number
+		average=$(expr $sumNum + $(expr $colNum / 2))
+		if ! [[ $colNum == 0 ]]
+			then 
+			average=$(expr $average / $colNum) 
+		else
+			average=""
+		fi
+		# Print (sum/cols)\n
+		printf "$average\t"
+		
+		
+done < $inputFile
+# Median: 
+echo -e "\nMedian: " 
+while read line 
+do
+	median=$(echo "$line" | tr "\t" "\n" | sort -n | tr "\n" "\t" | cut -f $(expr $(expr $colNum / 2) + 1))
+
+	printf "$median\t"
+done < $inputFile
+echo ""
+# Remove temp file
+rm -f temp 
+# Return successful exit 0 
+exit 0
+}
+
+# Columns function to print the average and median of the columns in the text file
+cols() {
+# Horizontal size of columns
+colX=0;
+# Vertical size of columns
+colY=0
+while read line
+do
+colX=$(echo $line | wc -w)
+done < $inputFile
+colY=$(cut -c 1 $inputFile | wc -w)
+echo "Average: "
+	# Iterate through every column
+	for i in $(seq 1 $colX)
+	do
+		sumNum=0
+
+		# Split column 
+		colSplit=$(cut -f $i $inputFile | tr "\t" "\n")
+		
+		# Add all of the elements in each column to find average
+		for j in $colSplit
+		do
+			sumNum=$(expr $j + $sumNum) 
+		done
+		# Rounds to the nearest whole number
+		average=$(expr $sumNum + $(expr $colY / 2))
+		if ! [[ $colY == 0 ]]
+			then 
+			average=$(expr $average / $colY) 
+		else
+			average=""
+		fi
+	printf "$average\t"
+	done
+
+	echo -e "\nMedian:" 
+	for i in $(seq 1 $colX)
+	do
+	colSplit=$(cut -f $i $inputFile | tr "\t" "\n")
+	median=$(echo "$colSplit" | tr '\t' '\n' | sort -n | tr '\n' '\t' | cut -f $(expr $(expr $colY / 2) + 1))
+	printf "$median\t"
+	done
+	echo ""
+	rm -f temp
+	exit 0
+}
+
+
+if [[ $1 == -r* ]];
+# Print rows results
+then
+	rows
+else
+# Print columns results
+	cols
+fi
